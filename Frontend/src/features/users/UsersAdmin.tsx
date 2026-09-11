@@ -129,11 +129,9 @@ export function UsersAdmin() {
                     <TableCell className="text-muted-foreground">{user.lastLogin}</TableCell>
                     <TableCell className="text-right pr-6">
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
+                        <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 rounded-md hover:bg-accent hover:text-accent-foreground">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
                           <DropdownMenuItem>

@@ -33,6 +33,7 @@ export interface CreateChallanPayload {
 }
 
 export interface UpdateChallanPayload {
-  items: ChallanItemPayload[];
+  items?: ChallanItemPayload[];
+  status?: ChallanStatus;
 }
 

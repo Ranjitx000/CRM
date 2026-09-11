@@ -17,7 +17,7 @@ export function Dashboard() {
   const { data: challansResponse, isLoading: loadingChallans } = useChallans();
 
   if (loadingCustomers || loadingProducts || loadingChallans) {
-    return <LoadingState message="Connecting to ERP database..." />;
+    return <LoadingState text="Connecting to ERP database..." />;
   }
 
   const customers = customersResponse?.data || [];

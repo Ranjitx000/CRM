@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useAuthStore } from '@/features/auth/auth.store';
 import type { UserRole } from '@/types/auth';
 

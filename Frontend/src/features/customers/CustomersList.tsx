@@ -8,13 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Search, Plus, Edit2, Users, Mail, Phone } from 'lucide-react';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useCustomerNotes, useAddCustomerNote } from '@/hooks/useCustomers';
-import type { Customer, CustomerType } from '@/types/customer';
+import type { Customer } from '@/types/customer';
 
 const customerSchema = z.object({
   name: z.string().min(2, { message: 'Name is required' }),
@@ -118,7 +118,7 @@ export function CustomersList() {
   };
 
   const onSubmit = (data: CustomerFormValues) => {
-    const payload = { ...data, email: data.email || undefined };
+    const payload = { ...data, email: data.email || undefined, status: 'ACTIVE' as const };
     
     if (editingCustomer) {
       updateCustomer.mutate({ id: editingCustomer._id, payload }, {

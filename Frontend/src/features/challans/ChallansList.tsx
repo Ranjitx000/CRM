@@ -249,12 +249,10 @@ export function ChallansList() {
                         </TableCell>
                         <TableCell className="text-right pr-6">
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity focus:opacity-100">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
+                            <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 p-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity focus:opacity-100 rounded-md hover:bg-accent hover:text-accent-foreground">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               {challan.status === 'DRAFT' && (
                                 <>
@@ -293,12 +291,12 @@ export function ChallansList() {
                                         <div class="meta">
                                           <div>
                                             <strong>Bill To:</strong><br/>
-                                            ${challan.customerId?.name || 'Walk-in Customer'}<br/>
-                                            ${challan.customerId?.email ? challan.customerId.email + '<br/>' : ''}
-                                            ${challan.customerId?.mobile || ''}
+                                            ${(challan.customerId as any)?.name || 'Walk-in Customer'}<br/>
+                                            ${(challan.customerId as any)?.email ? (challan.customerId as any).email + '<br/>' : ''}
+                                            ${(challan.customerId as any)?.mobile || ''}
                                           </div>
                                           <div class="text-right">
-                                            <strong>Date:</strong> ${new Date(challan.issueDate).toLocaleDateString()}<br/>
+                                            <strong>Date:</strong> ${new Date(challan.createdAt).toLocaleDateString()}<br/>
                                             <strong>Status:</strong> ${challan.status}
                                           </div>
                                         </div>

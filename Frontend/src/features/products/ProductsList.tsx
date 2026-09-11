@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Search, Plus, Edit2, MoreHorizontal, AlertTriangle, Package, Activity } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -17,14 +17,13 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { useProducts, useCreateProduct, useUpdateProduct } from '@/hooks/useProducts';
 import { useCreateStockMovement, useProductStockHistory } from '@/hooks/useStock';
 import type { Product } from '@/types/product';
-import type { StockMovementType } from '@/types/stock';
 
 const productSchema = z.object({
   name: z.string().min(2, { message: 'Name is required' }),
   sku: z.string().min(2, { message: 'SKU is required' }),
   category: z.string().optional(),
   unitPrice: z.coerce.number().min(0),
-  minStockAlert: z.coerce.number().min(0).default(0),
+  minStockAlert: z.coerce.number().min(0),
   warehouseLocation: z.string().optional(),
 });
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -301,11 +300,9 @@ export function ProductsList() {
                         </TableCell>
                         <TableCell className="text-right pr-6">
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity focus:opacity-100">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
+                            <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 p-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity focus:opacity-100 rounded-md hover:bg-accent hover:text-accent-foreground">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem onClick={() => openManageStock(product)}>
