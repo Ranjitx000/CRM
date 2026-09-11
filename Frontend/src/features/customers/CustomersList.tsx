@@ -144,7 +144,6 @@ export function CustomersList() {
           title="Customers" 
           description="Manage your customer relationships and accounts."
         />
-        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <Button className="w-full sm:w-auto shadow-soft animate-hover" onClick={openAdd}>
           <Plus className="mr-2 h-4 w-4" /> Add Customer
         </Button>
