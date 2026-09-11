@@ -1,0 +1,253 @@
+Backend PRD — Mini ERP + CRM Operations Portal
+
+Stack: Node.js + Express.js + JavaScript + MongoDB (Mongoose)
+
+1. Purpose
+
+Build the REST API and data layer that powers the ERP/CRM portal: authentication, customer records, product/inventory tracking, and the sales challan lifecycle — with correct role-based access and safe concurrent stock handling. The frontend depends entirely on this being correct and stable, so backend ships first.
+
+Stack note: MongoDB is document-based, not relational — transactions and atomicity here rely on Mongoose sessions (multi-document ACID transactions), which require MongoDB to run as a replica set. MongoDB Atlas's free tier is a replica set by default, so this works out of the box; a local single-node mongod does not support transactions unless started as a single-node replica set (rs.initiate()). This is called out explicitly because it's the most common setup mistake with this stack.
+
+2. Roles & Permission Matrix
+Resource	Admin	Sales	Warehouse	Accounts
+Users	CRUD	–	–	–
+Customers	CRUD	CRUD	Read	Read
+Customer notes	Create/Read	Create/Read	Read	Read
+Products	CRUD	Read	CRUD	Read
+Stock movements	Create/Read	Read	Create/Read	Read
+Challans (draft/edit)	CRUD	Create/Edit own	Read	Read
+Challan confirm	Yes	No	Yes	No
+Challan cancel	Yes	Own drafts only	Yes	No
+
+Every route enforces this server-side via middleware — the frontend hiding a button is not access control.
+
+3. Data Models (Mongoose schemas)
+js
+// models/User.js
+const userSchema = new Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true, lowercase: true },
+  passwordHash: { type: String, required: true },
+  role: { type: String, enum: ['ADMIN', 'SALES', 'WAREHOUSE', 'ACCOUNTS'], required: true },
+}, { timestamps: true });
+
+// models/Customer.js
+const customerSchema = new Schema({
+  name: { type: String, required: true },
+  mobile: { type: String, required: true, index: true },
+  email: String,
+  businessName: String,
+  gstNumber: String,
+  type: { type: String, enum: ['RETAIL', 'WHOLESALE', 'DISTRIBUTOR'], required: true },
+  address: String,
+  status: { type: String, enum: ['LEAD', 'ACTIVE', 'INACTIVE'], default: 'LEAD', index: true },
+  followUpDate: Date,
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+}, { timestamps: true });
+
+// models/CustomerNote.js  (append-only sub-collection, not embedded, so it scales & paginates cleanly)
+const customerNoteSchema = new Schema({
+  customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true, index: true },
+  note: { type: String, required: true },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+}, { timestamps: true });
+
+// models/Product.js
+const productSchema = new Schema({
+  name: { type: String, required: true },
+  sku: { type: String, required: true, unique: true, index: true },
+  category: String,
+  unitPrice: { type: Number, required: true, min: 0 },
+  currentStock: { type: Number, required: true, default: 0, min: 0 }, // mutated ONLY via stock-movement transactions
+  minStockAlert: { type: Number, default: 0 },
+  warehouseLocation: String,
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+}, { timestamps: true });
+
+// models/StockMovement.js
+const stockMovementSchema = new Schema({
+  productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true, index: true },
+  quantity: { type: Number, required: true, min: 1 },
+  type: { type: String, enum: ['IN', 'OUT'], required: true },
+  reason: { type: String, required: true },
+  referenceType: String,   // e.g. "challan", "challan-cancel"
+  referenceId: Schema.Types.ObjectId,
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+}, { timestamps: true });
+
+// models/Challan.js
+const challanItemSchema = new Schema({
+  productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+  productNameSnapshot: { type: String, required: true },
+  productSkuSnapshot: { type: String, required: true },
+  unitPriceSnapshot: { type: Number, required: true },
+  quantity: { type: Number, required: true, min: 1 },
+}, { _id: false });
+
+const challanSchema = new Schema({
+  challanNumber: { type: String, required: true, unique: true },
+  customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true, index: true },
+  status: { type: String, enum: ['DRAFT', 'CONFIRMED', 'CANCELLED'], default: 'DRAFT', index: true },
+  items: { type: [challanItemSchema], required: true },
+  totalQuantity: { type: Number, required: true },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  confirmedAt: Date,
+  cancelledAt: Date,
+}, { timestamps: true });
+
+// models/Counter.js  (backs the atomic challan-number sequence — see BL5)
+const counterSchema = new Schema({
+  _id: { type: String, required: true }, // e.g. "challan-2026"
+  seq: { type: Number, default: 0 },
+});
+
+Items are embedded inside Challan (not a separate collection) since they're always read/written together and never queried independently — a good fit for MongoDB's document model, unlike the relational version of this schema.
+
+4. API Contract
+4.1 Auth
+Method	Route	Access	Notes
+POST	/auth/login	Public	Returns access token + sets refresh cookie
+POST	/auth/refresh	Public (valid refresh cookie)	Issues new access token
+POST	/auth/logout	Authenticated	Clears refresh cookie
+4.2 Customers
+Method	Route	Access
+GET	/customers?search=&status=&type=&page=&limit=	All roles
+POST	/customers	Admin, Sales
+GET	/customers/:id	All roles
+PATCH	/customers/:id	Admin, Sales
+POST	/customers/:id/notes	Admin, Sales
+4.3 Products
+Method	Route	Access
+GET	/products?search=&category=&lowStock=&page=&limit=	All roles
+POST	/products	Admin, Warehouse
+PATCH	/products/:id	Admin, Warehouse
+GET	/products/:id/stock-movements	All roles
+4.4 Stock Movements
+Method	Route	Access
+POST	/stock-movements	Admin, Warehouse
+4.5 Challans
+Method	Route	Access
+POST	/challans	Admin, Sales
+GET	/challans?status=&customerId=&page=&limit=	All roles
+GET	/challans/:id	All roles
+PATCH	/challans/:id	Admin, Sales (own, Draft only)
+POST	/challans/:id/confirm	Admin, Warehouse
+POST	/challans/:id/cancel	Admin, Warehouse, Sales (own drafts)
+4.6 Response Shapes
+json
+// Success (list)
+{ "data": [...], "meta": { "total": 0, "page": 1, "limit": 20, "totalPages": 0 } }
+
+// Success (single)
+{ "data": { ... } }
+
+// Error
+{ "statusCode": 400, "message": "Human readable message", "error": "BadRequest", "details": [] }
+5. Core Business Logic Requirements
+
+BL1 — Stock is never edited directly. Product.currentStock changes only as a side effect of inserting a StockMovement document, inside the same session/transaction. No endpoint accepts a raw currentStock update.
+
+BL2 — Challan confirm is atomic and race-safe (Mongoose transaction).
+
+js
+// services/challan.service.js
+async function confirmChallan(challanId, userId) {
+  const session = await mongoose.startSession();
+  try {
+    let result;
+    await session.withTransaction(async () => {
+      const challan = await Challan.findById(challanId).session(session);
+      if (!challan) throw new AppError(404, 'Challan not found');
+      if (challan.status !== 'DRAFT') throw new AppError(409, 'Only draft challans can be confirmed');
+
+      // Atomic per-item stock check + deduct in one conditional update —
+      // this is what prevents negative stock under concurrent confirms.
+      for (const item of challan.items) {
+        const updated = await Product.findOneAndUpdate(
+          { _id: item.productId, currentStock: { $gte: item.quantity } },
+          { $inc: { currentStock: -item.quantity } },
+          { session, new: true }
+        );
+        if (!updated) {
+          throw new AppError(400, `Insufficient stock for SKU ${item.productSkuSnapshot}`);
+        }
+        await StockMovement.create([{
+          productId: item.productId, quantity: item.quantity, type: 'OUT',
+          reason: 'Sales Challan', referenceType: 'challan', referenceId: challan._id,
+          createdBy: userId,
+        }], { session });
+      }
+
+      challan.status = 'CONFIRMED';
+      challan.confirmedAt = new Date();
+      await challan.save({ session });
+      result = challan;
+    });
+    return result;
+  } finally {
+    session.endSession();
+  }
+}
+
+The key detail: findOneAndUpdate with currentStock: { $gte: quantity } in the filter makes the check-and-decrement a single atomic operation at the document level — that's what MongoDB uses instead of Postgres's Serializable isolation. Wrapping the whole loop in session.withTransaction ensures that if item 3 of 5 fails, items 1–2's deductions are rolled back too.
+
+BL3 — Challan cancel reverses stock only if it was confirmed. Cancelling a DRAFT challan just marks it CANCELLED (no stock was touched). Cancelling a CONFIRMED challan, inside a transaction, inserts an IN stock movement per item (referenceType: "challan-cancel") and $incs currentStock back up before marking it CANCELLED.
+
+BL4 — Challan items snapshot product data at creation time. productNameSnapshot, productSkuSnapshot, unitPriceSnapshot are copied from the live Product document when the item is added to the draft, and never re-read from Product afterward — even if the product is later edited or repriced.
+
+BL5 — Challan numbering is collision-proof. Use an atomic counter document, not Challan.countDocuments() + 1 (which races under concurrent creates):
+
+js
+async function getNextChallanNumber() {
+  const year = new Date().getFullYear();
+  const counter = await Counter.findByIdAndUpdate(
+    `challan-${year}`,
+    { $inc: { seq: 1 } },
+    { upsert: true, new: true }
+  );
+  return `CH-${year}-${String(counter.seq).padStart(6, '0')}`;
+}
+
+findByIdAndUpdate with $inc is atomic in MongoDB, so this is safe even with two challans being created simultaneously.
+
+6. Validation Rules (Zod, enforced in middleware before controller logic runs)
+Reject unknown fields on every body (.strict()).
+mobile: required, numeric, length-checked.
+email: valid email format when present.
+quantity fields: integer, > 0.
+unitPrice: positive number.
+Enum fields (role, type, status, movementType) validated against the allowed values — invalid values return 400, not a raw Mongoose CastError.
+Mongo ObjectId params (:id) validated as a real ObjectId before hitting the DB — invalid format returns 400, not 500.
+Pagination page/limit: default page=1, limit=20, limit capped at 100.
+7. Error Handling Requirements
+Every route wrapped (or uses an asyncHandler wrapper) so thrown/rejected errors reach a single error.middleware.js.
+Known errors (AppError with a statusCode) return that code + message.
+Mongoose validation errors (ValidationError) mapped to 400 with per-field details.
+Mongo duplicate-key errors (E11000, e.g. duplicate SKU/email/challanNumber) mapped to 409 with a clear message, not a raw 500.
+Invalid ObjectId (CastError) mapped to 400 ("Invalid id format"), not 500.
+Unknown/unexpected errors return 500 with a generic message (never leak stack traces to the client) and are logged server-side.
+8. Non-Functional Requirements
+Auth security: bcrypt (cost ≥ 10) for passwords; JWT access token ~15 min expiry; refresh token httpOnly + secure cookie, rotated on use.
+Rate limiting: /auth/login limited (e.g., 10 attempts / 15 min / IP) via express-rate-limit.
+Headers: helmet applied globally.
+CORS: restricted to the deployed frontend origin only, not *.
+Logging: structured request logging (method, path, status, duration, userId if authenticated); no sensitive fields (passwords, tokens) ever logged.
+Indexes: customers.mobile, customers.status, products.sku (unique), stockMovements.productId, challans.status, challans.customerId, challans.challanNumber (unique) — declared in the schemas above.
+Transactions: any multi-document write (challan confirm/cancel, stock movement + product stock update) wrapped in a Mongoose session/transaction — requires the MongoDB deployment to be a replica set (true by default on Atlas).
+9. Testing Requirements (minimum bar)
+Unit: challan confirm logic — sufficient stock (success), insufficient stock (rejected, no partial writes), already-confirmed challan (409).
+Integration: concurrency test firing two simultaneous confirms against a product with exactly enough stock for one — exactly one must succeed, the other must fail cleanly, currentStock must never go negative.
+RBAC: for each protected route, a test asserting a disallowed role gets 403.
+Validation: malformed payloads (missing required field, wrong enum value, negative quantity, invalid ObjectId) return 400 with details.
+10. Definition of Done (Backend)
+ All routes in Section 4 implemented and enforce Section 2's permission matrix.
+ BL1–BL5 implemented and covered by the tests in Section 9.
+ Consistent response/error shape (Section 4.6) across every endpoint.
+ MongoDB connection confirmed to be running as (or connecting to) a replica set, so transactions actually work.
+ .env.example present (MONGODB_URI, JWT_SECRET, etc.); no secrets committed.
+ Seed script creates one login per role for demo/testing.
+ Postman collection (or hand-written API doc) covering every route with example request/response.
+ Runs locally via docker-compose up (or local MongoDB) + npm run seed + npm run dev with no undocumented manual steps.
+11. Out of Scope (Backend v1)
+
+Purchase orders, supplier module, invoicing/e-invoicing, payments, multi-warehouse transfers, email/SMS notifications, image upload to S3, PDF generation.
