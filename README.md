@@ -1,153 +1,110 @@
-# Mini ERP & CRM Operations Portal
+# Mini ERP + CRM System
 
-A complete, full-stack enterprise resource planning (ERP) and customer relationship management (CRM) application designed for small to medium businesses. This system provides a unified interface to manage customers, product inventory, stock movements, and sales challans (delivery notes/invoices) with role-based access control.
+A full-stack, cloud-deployed Mini Enterprise Resource Planning (ERP) and Customer Relationship Management (CRM) system built on the MERN stack.
 
-## 🚀 Tech Stack
+## 🚀 Project Overview
 
-**Frontend:**
-- **React 18** (Vite)
-- **TypeScript**
-- **Tailwind CSS** + **Shadcn UI** for modern, responsive components
-- **React Query** for data fetching and caching
-- **Zustand** for global state management
-- **React Hook Form** + **Zod** for robust form validation
-- **Recharts** for analytics dashboards
-- **React Router** for protected routing
+This project provides a comprehensive internal tool for managing customers, products, inventory (stock movements), and generating delivery challans. It implements strict Role-Based Access Control (RBAC) to ensure employees only have access to modules relevant to their departments.
 
-**Backend:**
-- **Node.js** + **Express.js**
-- **MongoDB** + **Mongoose** (Supports standalone local MongoDB and MongoDB Atlas)
-- **JWT (JSON Web Tokens)** for secure, stateless authentication (Access & Refresh Tokens)
-- **Bcrypt** for password hashing
+**Live URL (Frontend):** https://crm-7c4p.vercel.app  
+**Live URL (Backend):** https://crm-gamma-lyart-16.vercel.app
 
----
+## 📋 Features & Modules
 
-## ✨ Key Features
+- **Authentication & RBAC**: Secure login with JWT. Four distinct roles: `ADMIN`, `SALES`, `WAREHOUSE`, and `ACCOUNTS`.
+- **Customer Management (CRM)**: Manage customer profiles, contact info, and activity notes.
+- **Product & Inventory Management**: Track products, SKUs, unit prices, warehouse locations, and low-stock alerts.
+- **Stock Movements**: Record IN/OUT stock adjustments with reasons and remarks.
+- **Delivery Challans**: Generate, draft, and confirm delivery challans linked to specific customers and products.
 
-### 1. Role-Based Access Control (RBAC)
-Secure authentication system with strict role-based route protection:
-- **ADMIN**: Full access to all modules and user management.
-- **SALES**: Access to Customers, Challans, and Dashboard.
-- **WAREHOUSE**: Access to Products, Inventory Stock Management, and Challans.
-- **ACCOUNTS**: Access to Customers, Challans, and Financial Analytics.
+## 💻 Tech Stack
 
-### 2. Comprehensive Dashboard
-- **Analytics & Stats**: High-level metrics on total customers, active SKUs, physical stock, and issued challans.
-- **Activity Timeline**: Real-time chronological tracking of system-wide actions.
-- **Revenue Overview**: Interactive charts visualizing monthly revenue trends.
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Shadcn UI, React Query (TanStack Query), React Hook Form, Zod.
+- **Backend**: Node.js, Express.js, MongoDB (Mongoose), JSON Web Tokens (JWT), bcrypt.
+- **Deployment**: Vercel (Serverless Functions for Backend, Static Hosting for Frontend), MongoDB Atlas.
 
-### 3. Customer Management (CRM)
-- Register and categorize customers (Retail, Wholesale, Distributor).
-- Track business details, GST numbers, primary contacts, and addresses.
-- **Follow-up Notes**: Add, track, and timestamp specific interaction notes per customer.
-- Interactive slide-out views for deep-diving into customer data on any device.
+## 🏗️ Architecture
+- **Client-Server Model**: Decoupled React frontend communicating with an Express REST API.
+- **Stateless Authentication**: JWT tokens stored securely in HTTP-only cookies.
+- **Serverless Deployment**: Backend APIs run as independent Vercel serverless functions via `api/index.js`.
 
-### 4. Inventory & Product Catalog
-- Manage product SKUs, categories, and unit pricing.
-- **Low Stock Alerts**: Define minimum stock thresholds; visual alerts trigger when inventory runs low.
-- **Stock Movement Log**: Track `IN` (restock) and `OUT` (dispatch) movements with attached reasons and history trails.
+For detailed architecture, see [Architecture Documentation](./docs/architecture.md).
 
-### 5. Sales Challans (Invoicing)
-- Create dynamic, multi-item delivery challans linking customers to products.
-- Real-time total calculation based on unit prices and quantities.
-- Status workflows (`DRAFT` → `CONFIRMED` or `CANCELLED`).
-- **Print to PDF**: Built-in, clean, formatted HTML-to-PDF print generation for physical delivery tracking.
-
-### 6. Fully Responsive Design
-Mobile-first layout considerations ensure tables, modals, sidebars, and dashboards scale perfectly across desktops, tablets, and smartphones.
-
----
-
-## 🛠️ Local Development Setup
+## 🚀 Setup Instructions
 
 ### Prerequisites
-- Node.js (v18+ recommended)
-- Git
-- MongoDB (Local standalone instance or a MongoDB Atlas Cloud URI)
+- Node.js (v18+)
+- MongoDB (Local or Atlas cluster)
 
-### 1. Clone the Repository
+### 1. Clone the repository
 ```bash
 git clone https://github.com/Ranjitx000/CRM.git
 cd CRM
 ```
 
 ### 2. Backend Setup
-Navigate to the backend directory, install dependencies, and configure environment variables.
-
 ```bash
 cd Backend
 npm install
 ```
-
 Create a `.env` file in the `Backend` directory:
 ```env
 PORT=5000
-MONGODB_URI=mongodb://127.0.0.1:27017/crm_db  # OR your MongoDB Atlas string
+MONGODB_URI=mongodb://localhost:27017/crm_erp
 JWT_SECRET=your_super_secret_jwt_key
-JWT_REFRESH_SECRET=your_super_secret_refresh_key
+NODE_ENV=development
 ```
-
-Start the backend server:
+Run the server:
 ```bash
 npm run dev
 ```
 
 ### 3. Frontend Setup
-Open a new terminal, navigate to the frontend directory, install dependencies, and start the Vite dev server.
-
+Open a new terminal:
 ```bash
 cd Frontend
 npm install
 ```
-
-Create a `.env` file in the `Frontend` directory (if required by your setup) to point to the backend URL:
+Create a `.env` file in the `Frontend` directory:
 ```env
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:5000
 ```
-
-Start the frontend application:
+Run the client:
 ```bash
 npm run dev
 ```
 
-The application will be running at `http://localhost:5173`.
-
----
-
-## 📂 Project Structure
-
-```
-CRM/
-├── Backend/
-│   ├── src/
-│   │   ├── controllers/      # Route handlers
-│   │   ├── middlewares/      # JWT auth and Role guards
-│   │   ├── models/           # Mongoose schemas (User, Customer, Product, Challan, etc.)
-│   │   ├── routes/           # Express API endpoints
-│   │   └── services/         # Business logic & database operations
-│   └── package.json
-│
-├── Frontend/
-│   ├── src/
-│   │   ├── api/              # Axios API clients & interceptors
-│   │   ├── app/              # Protected routing & Main layout wrapper
-│   │   ├── components/       # Shared UI elements & Shadcn primitives
-│   │   ├── features/         # Domain-driven feature modules (Auth, Customers, etc.)
-│   │   ├── hooks/            # React Query hooks for fetching/mutating data
-│   │   ├── lib/              # Utility functions & Axios setup
-│   │   └── types/            # TypeScript interfaces
-│   └── package.json
-│
-└── .gitignore                # Root gitignore securing env and node_modules
+### 4. Seed the Database
+To create the initial test users, run the seed script from the `Backend` directory:
+```bash
+node scripts/seed.js
 ```
 
+## 🔑 Test Credentials
+
+If you ran the seed script, you can log in with the following users (all passwords are `password123`):
+
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| **Admin** | `admin@example.com` | `password123` |
+| **Sales** | `sales@example.com` | `password123` |
+| **Warehouse** | `warehouse@example.com` | `password123` |
+| **Accounts** | `accounts@example.com` | `password123` |
+
+*Note: You can also use `superadmin@example.com` / `admin123` if deployed to the live server.*
+
+## 📚 Documentation
+
+For deeper technical documentation, please refer to the `/docs` folder:
+- [Architecture & Tech Stack](./docs/architecture.md)
+- [Database Schema & ER Diagram](./docs/database.md)
+- [API Documentation](./docs/api-documentation.md)
+- [Business Workflows](./docs/business-flow.md)
+
+## ⚠️ Known Limitations
+- Real-time notifications via WebSockets are not yet implemented.
+- PDF Generation for Challans relies on browser printing capabilities rather than server-side PDF compilation.
+- Currently, single-currency support only.
+
 ---
-
-## 🔒 Security Practices Implemented
-- **Passwords**: Hashed securely via bcrypt before saving to the database.
-- **API Protection**: Authorization headers required on endpoints; token expiration and refresh handling.
-- **Environment Isolation**: Sensitive keys and URIs are completely removed from source control via `.gitignore`.
-- **Hydration & Cross-Site Scripting (XSS)**: React handles DOM escaping naturally, protecting against injection attacks.
-
-## 📄 License
-This project is for educational and internal business purposes.
+*Created as a case study for Mini ERP + CRM implementation.*
